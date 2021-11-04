@@ -35,6 +35,7 @@ contract MyEpicGame is ERC721 {
     uint attackDamage;
   }
 
+  // Initialize the Big Boss
   BigBoss public bigBoss;
 
   // NFTs unique identifier
@@ -49,6 +50,10 @@ contract MyEpicGame is ERC721 {
 
   // Mapping NFT owners to the NFTs tokenId.
   mapping(address => uint256) public nftHolders;
+
+  // Events to be fired to the front-end app
+  event AttackComplete(uint newBossHp, uint newPlayerHp);
+  event CharacterNFTMinted(address sender, uint256 tokenId, uint256 characterIndex);
 
   // Data passed in to the contract when it's first created initializing the characters
   constructor(
@@ -100,37 +105,36 @@ contract MyEpicGame is ERC721 {
 
   // Function to generate tokenURI
   function tokenURI(uint256 _tokenId) public view override returns (string memory) {
-  CharacterAttributes memory charAttributes = nftHolderAttributes[_tokenId];
+    CharacterAttributes memory charAttributes = nftHolderAttributes[_tokenId];
 
-  string memory strHp = Strings.toString(charAttributes.hp);
-  string memory strMaxHp = Strings.toString(charAttributes.maxHp);
-  string memory strChakra = Strings.toString(charAttributes.chakra);
-  string memory strAttackDamage = Strings.toString(charAttributes.attackDamage);
+    string memory strHp = Strings.toString(charAttributes.hp);
+    string memory strMaxHp = Strings.toString(charAttributes.maxHp);
+    string memory strChakra = Strings.toString(charAttributes.chakra);
+    string memory strAttackDamage = Strings.toString(charAttributes.attackDamage);
 
-  string memory json = Base64.encode(
-    bytes(
-      string(
-        abi.encodePacked(
-          '{"name": "',
-          charAttributes.name,
-          ' -- NFT #: ',
-          Strings.toString(_tokenId),
-          '", "description": "This is an NFT that lets people play in the game Hokage Slayer!", "image": "',
-          charAttributes.imageURI,
-          '", "attributes": [ { "trait_type": "Health Points", "value": ',strHp,', "max_value": ', strMaxHp,'}, { "trait_type": "Chakra Points", "value": ',
-          strChakra,'}, { "trait_type": "Attack Damage", "value": ',
-          strAttackDamage,'} ]}'
+    string memory json = Base64.encode(
+      bytes(
+        string(
+          abi.encodePacked(
+            '{"name": "',
+            charAttributes.name,
+            ' -- NFT #: ',
+            Strings.toString(_tokenId),
+            '", "description": "This is an NFT that lets people play in the game Hokage Slayer!", "image": "',
+            charAttributes.imageURI,
+            '", "attributes": [ { "trait_type": "Health Points", "value": ',strHp,', "max_value": ', strMaxHp,'}, { "trait_type": "Chakra Points", "value": ',
+            strChakra,'}, { "trait_type": "Attack Damage", "value": ',
+            strAttackDamage,'} ]}'
+          )
         )
       )
-    )
-  );
+    );
 
-  string memory output = string(
-    abi.encodePacked("data:application/json;base64,", json)
-  );
-  
-  return output;
-}
+    string memory output = string(
+      abi.encodePacked("data:application/json;base64,", json)
+    );
+    return output;
+  }
 
   // Function for users to mint their NFTs
   function mintCharacterNFT(uint _characterIndex) external {
@@ -158,6 +162,9 @@ contract MyEpicGame is ERC721 {
 
     // Incrementing _tokenIds
     _tokenIds.increment();
+
+    // Event emitter
+    emit CharacterNFTMinted(msg.sender, newItemId, _characterIndex);
   }
 
   // Function to let players attack the boss
@@ -194,5 +201,33 @@ contract MyEpicGame is ERC721 {
     }
 
     console.log("Boss attacked player. New player hp: %s\n", player.hp);
+
+    // Event emitter
+    emit AttackComplete(bigBoss.hp, player.hp);
+  }
+
+  // Function to verify if user has already a hero NFt
+  function checkIfUserHasNFT() public view returns (CharacterAttributes memory) {
+    // Get the tokenId of the user's character NFT
+    uint256 userNftTokenId = nftHolders[msg.sender];
+    // If the user has a tokenId in the map, return their character.
+    if (userNftTokenId > 0) {
+      return nftHolderAttributes[userNftTokenId];
+    }
+    // Else, return an empty character.
+    else {
+      CharacterAttributes memory emptyStruct;
+      return emptyStruct;
+   }
+  }
+
+  // Function to retrieve all characters that can be minted
+  function getAllDefaultCharacters() public view returns (CharacterAttributes[] memory) {
+    return defaultCharacters;
+  }
+
+  // Function to return the boss for the fight
+  function getBigBoss() public view returns (BigBoss memory) {
+    return bigBoss;
   }
 }
